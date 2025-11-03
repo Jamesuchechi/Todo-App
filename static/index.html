@@ -3,108 +3,388 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Advanced Todo App</title>
+  <title>Ultimate Todo Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-in-out',
+            'slide-in': 'slideIn 0.3s ease-out',
+            'bounce-in': 'bounceIn 0.6s ease-out',
+            'pulse-soft': 'pulseSoft 2s infinite',
+            'shake': 'shake 0.5s ease-in-out',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' }
+            },
+            slideIn: {
+              '0%': { transform: 'translateY(-10px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' }
+            },
+            bounceIn: {
+              '0%': { transform: 'scale(0.3)', opacity: '0' },
+              '50%': { transform: 'scale(1.05)' },
+              '70%': { transform: 'scale(0.9)' },
+              '100%': { transform: 'scale(1)', opacity: '1' }
+            },
+            pulseSoft: {
+              '0%, 100%': { opacity: '1' },
+              '50%': { opacity: '0.8' }
+            },
+            shake: {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
+              '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    .task-card {
+      transition: all 0.3s ease;
+      border-left: 4px solid transparent;
+    }
+    .task-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .priority-low { border-left-color: #10b981; }
+    .priority-medium { border-left-color: #f59e0b; }
+    .priority-high { border-left-color: #f97316; }
+    .priority-urgent { border-left-color: #ef4444; }
+    .status-pending { background-color: #fef3c7; color: #d97706; }
+    .status-in_progress { background-color: #dbeafe; color: #1d4ed8; }
+    .status-completed { background-color: #d1fae5; color: #065f46; }
+    .status-cancelled { background-color: #f3f4f6; color: #6b7280; }
+    .hover-lift { transition: all 0.3s ease; }
+    .hover-lift:hover { transform: translateY(-3px); }
+    .smooth-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .underline-animation {
+      position: relative;
+      display: inline-block;
+    }
+    .underline-animation:after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 2px;
+      bottom: -2px;
+      left: 0;
+      background-color: currentColor;
+      transition: width 0.3s ease;
+    }
+    .underline-animation:hover:after {
+      width: 100%;
+    }
+    .checkbox-custom {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #d1d5db;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    .checkbox-custom:checked {
+      background-color: #10b981;
+      border-color: #10b981;
+    }
+    .checkbox-custom:checked:before {
+      content: '✓';
+      position: absolute;
+      color: white;
+      font-size: 14px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .fade-enter-active, .fade-leave-active {
+      transition: opacity 0.5s;
+    }
+    .fade-enter, .fade-leave-to {
+      opacity: 0;
+    }
+    .progress-bar {
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      background-color: #e5e7eb;
+    }
+    .progress-fill {
+      height: 100%;
+      transition: width 0.5s ease;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4" x-data="todoApp()">
-
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen p-4" x-data="todoApp()">
   <div class="max-w-7xl mx-auto">
-    <!-- Header with Stats -->
-    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-3xl font-bold text-indigo-600">📋 Advanced Todo Manager</h1>
-        <button @click="showStats = !showStats" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg transition">
-          <span x-show="!showStats">Show Stats</span>
-          <span x-show="showStats">Hide Stats</span>
-        </button>
+    <!-- Header -->
+    <div class="glass-effect rounded-2xl shadow-xl p-6 mb-6 animate-fade-in">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div>
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent">
+            <i class="fas fa-tasks mr-2"></i>Ultimate Todo Manager
+          </h1>
+          <p class="text-gray-600 mt-1">Stay organized and boost your productivity</p>
+        </div>
+        
+        <div class="flex gap-2">
+          <button @click="showStats = !showStats" 
+                  class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition-all duration-300 hover-lift shadow-sm">
+            <i class="fas fa-chart-bar"></i>
+            <span x-text="showStats ? 'Hide Stats' : 'Show Stats'"></span>
+          </button>
+          
+          <button @click="view = view === 'list' ? 'kanban' : 'list'" 
+                  class="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-all duration-300 hover-lift shadow-sm">
+            <i class="fas" :class="view === 'list' ? 'fa-columns' : 'fa-list'"></i>
+            <span x-text="view === 'list' ? 'Kanban View' : 'List View'"></span>
+          </button>
+        </div>
       </div>
       
       <!-- Stats Panel -->
-      <div x-show="showStats" x-collapse class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-        <div class="bg-blue-50 p-4 rounded-lg">
-          <div class="text-2xl font-bold text-blue-600" x-text="stats.total"></div>
-          <div class="text-sm text-gray-600">Total Tasks</div>
+      <div x-show="showStats" x-collapse 
+           class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-6 animate-slide-in">
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover-lift">
+          <div class="text-2xl font-bold text-primary-600" x-text="stats.total"></div>
+          <div class="text-sm text-gray-500 flex items-center gap-1">
+            <i class="fas fa-tasks"></i> Total
+          </div>
         </div>
-        <div class="bg-green-50 p-4 rounded-lg">
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover-lift">
           <div class="text-2xl font-bold text-green-600" x-text="stats.completed"></div>
-          <div class="text-sm text-gray-600">Completed</div>
+          <div class="text-sm text-gray-500 flex items-center gap-1">
+            <i class="fas fa-check-circle"></i> Completed
+          </div>
         </div>
-        <div class="bg-yellow-50 p-4 rounded-lg">
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover-lift">
           <div class="text-2xl font-bold text-yellow-600" x-text="stats.pending"></div>
-          <div class="text-sm text-gray-600">Pending</div>
+          <div class="text-sm text-gray-500 flex items-center gap-1">
+            <i class="fas fa-clock"></i> Pending
+          </div>
         </div>
-        <div class="bg-red-50 p-4 rounded-lg">
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover-lift">
+          <div class="text-2xl font-bold text-blue-600" x-text="stats.in_progress"></div>
+          <div class="text-sm text-gray-500 flex items-center gap-1">
+            <i class="fas fa-spinner"></i> In Progress
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover-lift">
           <div class="text-2xl font-bold text-red-600" x-text="stats.overdue"></div>
-          <div class="text-sm text-gray-600">Overdue</div>
+          <div class="text-sm text-gray-500 flex items-center gap-1">
+            <i class="fas fa-exclamation-triangle"></i> Overdue
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover-lift">
+          <div class="text-2xl font-bold text-purple-600" x-text="`${stats.completion_rate}%`"></div>
+          <div class="text-sm text-gray-500 flex items-center gap-1">
+            <i class="fas fa-chart-line"></i> Completion
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="mt-6" x-show="showStats">
+        <div class="flex justify-between text-sm text-gray-600 mb-1">
+          <span>Overall Progress</span>
+          <span x-text="`${stats.completion_rate}%`"></span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="`width: ${stats.completion_rate}%`"></div>
         </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left Panel - Add Task -->
-      <div class="lg:col-span-1">
-        <div class="bg-white rounded-2xl shadow-lg p-6">
-          <h2 class="text-xl font-bold mb-4 text-gray-800">➕ Add New Task</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- Left Panel - Add Task & Filters -->
+      <div class="lg:col-span-1 space-y-6">
+        <!-- Add Task Card -->
+        <div class="glass-effect rounded-2xl shadow-xl p-6 animate-fade-in">
+          <h2 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+            <i class="fas fa-plus-circle text-primary-500"></i>
+            <span class="underline-animation">Add New Task</span>
+          </h2>
           
           <div class="space-y-4">
-            <input x-model="newTodo.title" placeholder="Task title..." 
-                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+              <input x-model="newTodo.title" placeholder="What needs to be done?" 
+                     class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+            </div>
             
-            <textarea x-model="newTodo.description" placeholder="Description (optional)..." 
-                      class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 h-24"></textarea>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea x-model="newTodo.description" placeholder="Add details (optional)..." 
+                        class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300 h-24"></textarea>
+            </div>
             
-            <select x-model="newTodo.priority" class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-              <option value="low">🟢 Low Priority</option>
-              <option value="medium" selected>🟡 Medium Priority</option>
-              <option value="high">🟠 High Priority</option>
-              <option value="urgent">🔴 Urgent</option>
-            </select>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select x-model="newTodo.priority" class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+                  <option value="low">🟢 Low</option>
+                  <option value="medium" selected>🟡 Medium</option>
+                  <option value="high">🟠 High</option>
+                  <option value="urgent">🔴 Urgent</option>
+                </select>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select x-model="newTodo.status" class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+                  <option value="pending">⏳ Pending</option>
+                  <option value="in_progress">🔄 In Progress</option>
+                  <option value="completed">✅ Completed</option>
+                </select>
+              </div>
+            </div>
             
-            <input x-model="newTodo.category" placeholder="Category (e.g., Work, Personal)..." 
-                   list="categories-list"
-                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-            <datalist id="categories-list">
-              <template x-for="cat in categories" :key="cat">
-                <option :value="cat"></option>
-              </template>
-            </datalist>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <div class="flex gap-2">
+                <input x-model="newTodo.category" placeholder="Work, Personal..." 
+                       list="categories-list"
+                       class="flex-1 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+                <button @click="addCategory(newTodo.category)" class="bg-primary-500 hover:bg-primary-600 text-white px-3 rounded-lg transition-all duration-300 hover-lift">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+              <datalist id="categories-list">
+                <template x-for="cat in categories" :key="cat">
+                  <option :value="cat"></option>
+                </template>
+              </datalist>
+            </div>
             
-            <input type="datetime-local" x-model="newTodo.due_date" 
-                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                <input type="datetime-local" x-model="newTodo.due_date" 
+                       class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
+                <input type="number" x-model="newTodo.estimated_duration" placeholder="60" 
+                       class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+              </div>
+            </div>
             
-            <input x-model="newTodo.tags" placeholder="Tags (comma-separated)..." 
-                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-            
-            <input type="number" x-model="newTodo.estimated_duration" placeholder="Duration (minutes)..." 
-                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+              <input x-model="newTodo.tags" placeholder="urgent, important, project-x..." 
+                     class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+            </div>
             
             <button @click="addTodo" 
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-3 font-semibold transition">
+                    class="w-full bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 text-white rounded-lg px-4 py-3 font-semibold transition-all duration-300 hover-lift shadow-md flex items-center justify-center gap-2">
+              <i class="fas fa-plus"></i>
               Add Task
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="glass-effect rounded-2xl shadow-xl p-6 animate-fade-in">
+          <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+            <i class="fas fa-bolt text-yellow-500"></i>
+            <span class="underline-animation">Quick Actions</span>
+          </h3>
+          
+          <div class="space-y-3">
+            <button @click="showQuickAdd = !showQuickAdd" 
+                    class="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg p-3 transition-all duration-300 hover-lift text-left flex items-center gap-3">
+              <i class="fas fa-plus text-green-500"></i>
+              <span>Quick Add Task</span>
+            </button>
+            
+            <button @click="focusMode = !focusMode" 
+                    class="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg p-3 transition-all duration-300 hover-lift text-left flex items-center gap-3">
+              <i class="fas fa-eye" :class="focusMode ? 'text-red-500' : 'text-blue-500'"></i>
+              <span x-text="focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'"></span>
+            </button>
+            
+            <button @click="clearCompleted" 
+                    class="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg p-3 transition-all duration-300 hover-lift text-left flex items-center gap-3">
+              <i class="fas fa-broom text-orange-500"></i>
+              <span>Clear Completed</span>
+            </button>
+          </div>
+
+          <!-- Quick Add -->
+          <div x-show="showQuickAdd" class="mt-4 p-4 bg-gray-50 rounded-lg animate-slide-in">
+            <input x-model="quickTask" placeholder="Task title..." 
+                   @keyup.enter="addQuickTask"
+                   class="w-full border border-gray-300 rounded-lg p-2 mb-2 focus:outline-none focus:ring-2 focus:ring-primary-400">
+            <button @click="addQuickTask" 
+                    class="w-full bg-primary-500 hover:bg-primary-600 text-white rounded-lg p-2 transition-all duration-300">
+              Add Quick Task
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Right Panel - Todo List -->
-      <div class="lg:col-span-2">
-        <div class="bg-white rounded-2xl shadow-lg p-6">
-          <!-- Filters and Search -->
-          <div class="mb-6 space-y-4">
-            <input x-model="filters.search" @input="fetchTodos" placeholder="🔍 Search tasks..." 
-                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-            
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <select x-model="filters.completed" @change="fetchTodos" 
-                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+      <!-- Main Content Area -->
+      <div class="lg:col-span-3">
+        <!-- Filters Card -->
+        <div class="glass-effect rounded-2xl shadow-xl p-6 mb-6 animate-fade-in">
+          <div class="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+            <!-- Search -->
+            <div class="flex-1 w-full md:w-auto">
+              <div class="relative">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                <input x-model="filters.search" @input="debouncedFetchTodos" placeholder="Search tasks..." 
+                       class="w-full pl-10 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all duration-300">
+              </div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="flex gap-2 flex-wrap">
+              <select x-model="filters.status" @change="fetchTodos" 
+                      class="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 transition-all duration-300">
                 <option value="">All Status</option>
-                <option value="false">Pending</option>
-                <option value="true">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
               </select>
               
               <select x-model="filters.priority" @change="fetchTodos" 
-                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                      class="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 transition-all duration-300">
                 <option value="">All Priorities</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -113,7 +393,7 @@
               </select>
               
               <select x-model="filters.category" @change="fetchTodos" 
-                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                      class="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 transition-all duration-300">
                 <option value="">All Categories</option>
                 <template x-for="cat in categories" :key="cat">
                   <option :value="cat" x-text="cat"></option>
@@ -121,118 +401,241 @@
               </select>
               
               <select x-model="filters.sort_by" @change="fetchTodos" 
-                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
-                <option value="created_at">Sort by Date</option>
-                <option value="due_date">Sort by Due Date</option>
-                <option value="priority">Sort by Priority</option>
-                <option value="title">Sort by Title</option>
+                      class="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 transition-all duration-300">
+                <option value="created_at">Newest First</option>
+                <option value="due_date">Due Date</option>
+                <option value="priority">Priority</option>
+                <option value="title">Title</option>
               </select>
             </div>
-
-            <!-- Bulk Actions -->
-            <div x-show="selectedTodos.length > 0" class="flex gap-2 flex-wrap">
-              <button @click="bulkComplete" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition">
-                ✓ Complete Selected (<span x-text="selectedTodos.length"></span>)
-              </button>
-              <button @click="bulkArchive" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition">
-                📦 Archive Selected
-              </button>
-              <button @click="bulkDelete" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition">
-                🗑️ Delete Selected
-              </button>
-              <button @click="selectedTodos = []" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition">
-                Clear Selection
-              </button>
-            </div>
           </div>
 
-          <!-- Todo List -->
-          <div class="space-y-3 max-h-[600px] overflow-y-auto">
-            <template x-if="todos.length === 0">
-              <div class="text-center py-12 text-gray-500">
-                <div class="text-6xl mb-4">📝</div>
-                <p>No tasks found. Create one to get started!</p>
-              </div>
-            </template>
-
-            <template x-for="todo in todos" :key="todo.id">
-              <div class="border rounded-lg p-4 hover:shadow-md transition"
-                   :class="getPriorityColor(todo.priority)">
-                <div class="flex items-start gap-3">
-                  <input type="checkbox" 
-                         :checked="selectedTodos.includes(todo.id)"
-                         @change="toggleSelection(todo.id)"
-                         class="mt-1 w-4 h-4">
-                  
-                  <input type="checkbox" 
-                         :checked="todo.completed" 
-                         @change="toggleComplete(todo)" 
-                         class="mt-1 w-5 h-5">
-                  
-                  <div class="flex-1" @click="editingTodo = todo.id">
-                    <template x-if="editingTodo !== todo.id">
-                      <div>
-                        <h3 class="font-semibold text-lg" 
-                            :class="todo.completed ? 'line-through text-gray-500' : 'text-gray-800'"
-                            x-text="todo.title"></h3>
-                        
-                        <p x-show="todo.description" 
-                           class="text-sm text-gray-600 mt-1" 
-                           x-text="todo.description"></p>
-                        
-                        <div class="flex flex-wrap gap-2 mt-2 text-xs">
-                          <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded" 
-                                x-text="getPriorityLabel(todo.priority)"></span>
-                          <span x-show="todo.category" 
-                                class="px-2 py-1 bg-purple-100 text-purple-700 rounded" 
-                                x-text="todo.category"></span>
-                          <span x-show="todo.due_date" 
-                                class="px-2 py-1 bg-orange-100 text-orange-700 rounded" 
-                                x-text="formatDate(todo.due_date)"></span>
-                          <span x-show="todo.estimated_duration" 
-                                class="px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                            ⏱️ <span x-text="todo.estimated_duration + ' min'"></span>
-                          </span>
-                        </div>
-                        
-                        <div x-show="todo.tags" class="flex flex-wrap gap-1 mt-2">
-                          <template x-for="tag in (todo.tags || '').split(',').filter(t => t.trim())" :key="tag">
-                            <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs" 
-                                  x-text="'#' + tag.trim()"></span>
-                          </template>
-                        </div>
-                      </div>
-                    </template>
-
-                    <template x-if="editingTodo === todo.id">
-                      <div class="space-y-2">
-                        <input x-model="todo.title" 
-                               class="w-full border rounded p-2 text-sm"
-                               @click.stop>
-                        <textarea x-model="todo.description" 
-                                  class="w-full border rounded p-2 text-sm h-20"
-                                  @click.stop></textarea>
-                        <button @click.stop="updateTodo(todo)" 
-                                class="bg-indigo-600 text-white px-3 py-1 rounded text-sm">
-                          Save
-                        </button>
-                        <button @click.stop="editingTodo = null; fetchTodos()" 
-                                class="bg-gray-500 text-white px-3 py-1 rounded text-sm ml-2">
-                          Cancel
-                        </button>
-                      </div>
-                    </template>
-                  </div>
-                  
-                  <button @click="deleteTodo(todo.id)" 
-                          class="text-red-500 hover:text-red-700 text-sm">
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            </template>
+          <!-- Bulk Actions -->
+          <div x-show="selectedTodos.length > 0" class="flex gap-2 flex-wrap mt-4 animate-slide-in">
+            <button @click="bulkComplete" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300 hover-lift flex items-center gap-2">
+              <i class="fas fa-check"></i>
+              Complete (<span x-text="selectedTodos.length"></span>)
+            </button>
+            <button @click="bulkArchive" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300 hover-lift flex items-center gap-2">
+              <i class="fas fa-archive"></i>
+              Archive
+            </button>
+            <button @click="bulkDelete" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300 hover-lift flex items-center gap-2">
+              <i class="fas fa-trash"></i>
+              Delete
+            </button>
+            <button @click="selectedTodos = []" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300 hover-lift flex items-center gap-2">
+              <i class="fas fa-times"></i>
+              Clear
+            </button>
           </div>
         </div>
+
+        <!-- Content View -->
+        <template x-if="view === 'list'">
+          <!-- List View -->
+          <div class="glass-effect rounded-2xl shadow-xl p-6 animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-list-ul text-primary-500"></i>
+                <span class="underline-animation">Your Tasks</span>
+              </h2>
+              <span class="text-sm text-gray-500" x-text="`${todos.length} tasks`"></span>
+            </div>
+
+            <div class="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+              <template x-if="todos.length === 0">
+                <div class="text-center py-12 text-gray-500 animate-pulse-soft">
+                  <div class="text-6xl mb-4">📝</div>
+                  <p class="text-lg">No tasks found. Create one to get started!</p>
+                  <p class="text-sm mt-2">Use the form on the left to add your first task.</p>
+                </div>
+              </template>
+
+              <template x-for="todo in todos" :key="todo.id">
+                <div class="task-card bg-white rounded-xl p-4 shadow-sm border border-gray-100 smooth-transition"
+                     :class="`priority-${todo.priority}`">
+                  <div class="flex items-start gap-4">
+                    <!-- Selection Checkbox -->
+                    <input type="checkbox" 
+                           :checked="selectedTodos.includes(todo.id)"
+                           @change="toggleSelection(todo.id)"
+                           class="checkbox-custom mt-1">
+                    
+                    <!-- Status Checkbox -->
+                    <input type="checkbox" 
+                           :checked="todo.status === 'completed'" 
+                           @change="toggleStatus(todo)" 
+                           class="checkbox-custom mt-1">
+                    
+                    <!-- Todo Content -->
+                    <div class="flex-1 min-w-0">
+                      <template x-if="editingTodo !== todo.id">
+                        <div @click="editingTodo = todo.id" class="cursor-pointer">
+                          <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <h3 class="font-semibold text-lg truncate flex-1" 
+                                :class="todo.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-800'"
+                                x-text="todo.title"></h3>
+                            
+                            <span class="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                                  :class="{
+                                    'status-pending': todo.status === 'pending',
+                                    'status-in_progress': todo.status === 'in_progress',
+                                    'status-completed': todo.status === 'completed',
+                                    'status-cancelled': todo.status === 'cancelled'
+                                  }"
+                                  x-text="todo.status.replace('_', ' ')"></span>
+                          </div>
+                          
+                          <p x-show="todo.description" 
+                             class="text-sm text-gray-600 mb-3 line-clamp-2" 
+                             x-text="todo.description"></p>
+                          
+                          <!-- Meta Information -->
+                          <div class="flex flex-wrap gap-2 text-xs">
+                            <span class="px-2 py-1 rounded-full flex items-center gap-1"
+                                  :class="{
+                                    'bg-green-100 text-green-700': todo.priority === 'low',
+                                    'bg-yellow-100 text-yellow-700': todo.priority === 'medium',
+                                    'bg-orange-100 text-orange-700': todo.priority === 'high',
+                                    'bg-red-100 text-red-700': todo.priority === 'urgent'
+                                  }">
+                              <i class="fas fa-flag"></i>
+                              <span x-text="todo.priority" class="capitalize"></span>
+                            </span>
+                            
+                            <span x-show="todo.category" 
+                                  class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full flex items-center gap-1">
+                              <i class="fas fa-folder"></i>
+                              <span x-text="todo.category"></span>
+                            </span>
+                            
+                            <span x-show="todo.due_date" 
+                                  class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full flex items-center gap-1"
+                                  :class="{'bg-red-100 text-red-700': isOverdue(todo.due_date)}">
+                              <i class="fas fa-calendar"></i>
+                              <span x-text="formatDate(todo.due_date)"></span>
+                            </span>
+                            
+                            <span x-show="todo.estimated_duration" 
+                                  class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+                              <i class="fas fa-clock"></i>
+                              <span x-text="`${todo.estimated_duration} min`"></span>
+                            </span>
+                          </div>
+                          
+                          <!-- Tags -->
+                          <div x-show="todo.tags" class="flex flex-wrap gap-1 mt-2">
+                            <template x-for="tag in (todo.tags || '').split(',').filter(t => t.trim())" :key="tag">
+                              <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex items-center gap-1" 
+                                    x-text="'#' + tag.trim()"></span>
+                            </template>
+                          </div>
+                          
+                          <!-- Time Info -->
+                          <div class="flex justify-between items-center mt-3 text-xs text-gray-500">
+                            <span x-text="`Created: ${formatDateTime(todo.created_at)}`"></span>
+                            <span x-show="todo.updated_at && todo.updated_at !== todo.created_at" 
+                                  x-text="`Updated: ${formatDateTime(todo.updated_at)}`"></span>
+                          </div>
+                        </div>
+                      </template>
+
+                      <!-- Edit Mode -->
+                      <template x-if="editingTodo === todo.id">
+                        <div class="space-y-3 animate-slide-in">
+                          <input x-model="todo.title" 
+                                 class="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+                                 @click.stop>
+                          <textarea x-model="todo.description" 
+                                    class="w-full border border-gray-300 rounded p-2 text-sm h-20 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                                    @click.stop></textarea>
+                          <div class="flex gap-2">
+                            <button @click.stop="updateTodo(todo)" 
+                                    class="bg-primary-500 hover:bg-primary-600 text-white px-3 py-1 rounded text-sm transition-all duration-300 flex items-center gap-1">
+                              <i class="fas fa-save"></i> Save
+                            </button>
+                            <button @click.stop="editingTodo = null; fetchTodos()" 
+                                    class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-all duration-300 flex items-center gap-1">
+                              <i class="fas fa-times"></i> Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="flex flex-col gap-2">
+                      <button @click="deleteTodo(todo.id)" 
+                              class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-all duration-300"
+                              title="Delete task">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                      <button @click="editingTodo = todo.id" 
+                              class="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition-all duration-300"
+                              title="Edit task">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button @click="toggleArchive(todo)" 
+                              class="text-orange-500 hover:text-orange-700 p-2 rounded-full hover:bg-orange-50 transition-all duration-300"
+                              :title="todo.is_archived ? 'Unarchive task' : 'Archive task'">
+                        <i class="fas" :class="todo.is_archived ? 'fa-box-open' : 'fa-archive'"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="view === 'kanban'">
+          <!-- Kanban View -->
+          <div class="animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <template x-for="status in ['pending', 'in_progress', 'completed']" :key="status">
+                <div class="bg-white rounded-2xl shadow-xl p-6">
+                  <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2 capitalize"
+                      x-text="status.replace('_', ' ')"></h3>
+                  
+                  <div class="space-y-4 min-h-64 max-h-[600px] overflow-y-auto"
+                       @drop="dropTodo($event, status)" 
+                       @dragover="allowDrop($event)">
+                    <template x-for="todo in getTodosByStatus(status)" :key="todo.id">
+                      <div class="task-card bg-gray-50 rounded-xl p-4 border border-gray-200 smooth-transition cursor-move"
+                           draggable="true"
+                           @dragstart="dragTodo($event, todo.id)"
+                           :class="`priority-${todo.priority}`">
+                        <div class="flex justify-between items-start mb-2">
+                          <h4 class="font-semibold" x-text="todo.title"></h4>
+                          <div class="flex gap-1">
+                            <button @click="deleteTodo(todo.id)" class="text-red-500 hover:text-red-700 text-sm">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <p x-show="todo.description" class="text-sm text-gray-600 mb-3 line-clamp-2" 
+                           x-text="todo.description"></p>
+                        
+                        <div class="flex justify-between items-center text-xs text-gray-500">
+                          <span x-text="formatDate(todo.due_date)" x-show="todo.due_date"></span>
+                          <span x-text="todo.priority" class="capitalize"></span>
+                        </div>
+                      </div>
+                    </template>
+                    
+                    <div x-show="getTodosByStatus(status).length === 0" 
+                         class="text-center py-8 text-gray-400 border-2 border-dashed border-gray-300 rounded-xl">
+                      <i class="fas fa-inbox text-2xl mb-2"></i>
+                      <p>No tasks</p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -241,31 +644,35 @@
     function todoApp() {
       return {
         todos: [],
-        categories: [],
+        categories: ['Work', 'Personal', 'Shopping', 'Health'],
         tags: [],
         stats: {
           total: 0,
           completed: 0,
           pending: 0,
-          archived: 0,
+          in_progress: 0,
           overdue: 0,
           due_today: 0,
           by_priority: {},
           by_category: {},
-          completion_rate: 0
+          by_status: {},
+          completion_rate: 0,
+          average_completion_time: null
         },
         newTodo: {
           title: '',
           description: '',
           priority: 'medium',
+          status: 'pending',
           category: '',
           due_date: '',
           tags: '',
           estimated_duration: null
         },
+        quickTask: '',
         filters: {
           search: '',
-          completed: '',
+          status: '',
           priority: '',
           category: '',
           sort_by: 'created_at',
@@ -273,122 +680,254 @@
         },
         selectedTodos: [],
         editingTodo: null,
-        showStats: false,
+        showStats: true,
+        showQuickAdd: false,
+        focusMode: false,
+        view: 'list',
         apiUrl: '/todos/',
+        debounceTimer: null,
 
         async fetchTodos() {
-          const params = new URLSearchParams();
-          if (this.filters.search) params.append('search', this.filters.search);
-          if (this.filters.completed) params.append('completed', this.filters.completed);
-          if (this.filters.priority) params.append('priority', this.filters.priority);
-          if (this.filters.category) params.append('category', this.filters.category);
-          params.append('sort_by', this.filters.sort_by);
-          params.append('sort_order', this.filters.sort_order);
+          try {
+            const params = new URLSearchParams();
+            if (this.filters.search) params.append('search', this.filters.search);
+            if (this.filters.status) params.append('status', this.filters.status);
+            if (this.filters.priority) params.append('priority', this.filters.priority);
+            if (this.filters.category) params.append('category', this.filters.category);
+            params.append('sort_by', this.filters.sort_by);
+            params.append('sort_order', this.filters.sort_order);
 
-          const res = await fetch(`${this.apiUrl}?${params}`);
-          this.todos = await res.json();
+            const res = await fetch(`${this.apiUrl}?${params}`);
+            this.todos = await res.json();
+          } catch (error) {
+            console.error('Error fetching todos:', error);
+          }
+        },
+
+        debouncedFetchTodos() {
+          clearTimeout(this.debounceTimer);
+          this.debounceTimer = setTimeout(() => {
+            this.fetchTodos();
+          }, 300);
         },
 
         async fetchStats() {
-          const res = await fetch(`${this.apiUrl}stats`);
-          this.stats = await res.json();
+          try {
+            const res = await fetch(`${this.apiUrl}stats/`);
+            this.stats = await res.json();
+          } catch (error) {
+            console.error('Error fetching stats:', error);
+          }
         },
 
         async fetchCategories() {
-          const res = await fetch(`${this.apiUrl}categories`);
-          this.categories = await res.json();
+          try {
+            const res = await fetch(`${this.apiUrl}categories/`);
+            this.categories = await res.json();
+          } catch (error) {
+            console.error('Error fetching categories:', error);
+          }
         },
 
         async addTodo() {
-          if (!this.newTodo.title.trim()) return;
+          if (!this.newTodo.title.trim()) {
+            this.shakeElement('newTodo.title');
+            return;
+          }
           
-          const todoData = { ...this.newTodo };
-          if (!todoData.due_date) delete todoData.due_date;
-          if (!todoData.estimated_duration) delete todoData.estimated_duration;
+          try {
+            const todoData = { ...this.newTodo };
+            if (!todoData.due_date) delete todoData.due_date;
+            if (!todoData.estimated_duration) delete todoData.estimated_duration;
 
-          await fetch(this.apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(todoData)
-          });
+            await fetch(this.apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(todoData)
+            });
 
-          this.newTodo = {
-            title: '',
-            description: '',
-            priority: 'medium',
-            category: '',
-            due_date: '',
-            tags: '',
-            estimated_duration: null
-          };
-          
-          this.fetchTodos();
-          this.fetchStats();
-          this.fetchCategories();
+            this.newTodo = {
+              title: '',
+              description: '',
+              priority: 'medium',
+              status: 'pending',
+              category: '',
+              due_date: '',
+              tags: '',
+              estimated_duration: null
+            };
+            
+            this.fetchTodos();
+            this.fetchStats();
+            this.fetchCategories();
+            
+            // Show success animation
+            this.showNotification('Task added successfully!', 'success');
+          } catch (error) {
+            console.error('Error adding todo:', error);
+            this.showNotification('Error adding task', 'error');
+          }
         },
 
-        async toggleComplete(todo) {
-          await fetch(`${this.apiUrl}${todo.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ completed: !todo.completed })
-          });
-          this.fetchTodos();
-          this.fetchStats();
+        async addQuickTask() {
+          if (!this.quickTask.trim()) return;
+          
+          this.newTodo.title = this.quickTask;
+          await this.addTodo();
+          this.quickTask = '';
+          this.showQuickAdd = false;
+        },
+
+        async toggleStatus(todo) {
+          const newStatus = todo.status === 'completed' ? 'pending' : 'completed';
+          
+          try {
+            await fetch(`${this.apiUrl}${todo.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: newStatus })
+            });
+            this.fetchTodos();
+            this.fetchStats();
+            
+            const message = newStatus === 'completed' ? 'Task completed!' : 'Task marked as pending';
+            this.showNotification(message, 'success');
+          } catch (error) {
+            console.error('Error updating todo:', error);
+            this.showNotification('Error updating task', 'error');
+          }
         },
 
         async updateTodo(todo) {
-          await fetch(`${this.apiUrl}${todo.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: todo.title,
-              description: todo.description
-            })
-          });
-          this.editingTodo = null;
-          this.fetchTodos();
+          try {
+            await fetch(`${this.apiUrl}${todo.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: todo.title,
+                description: todo.description,
+                status: todo.status,
+                priority: todo.priority
+              })
+            });
+            this.editingTodo = null;
+            this.fetchTodos();
+            this.showNotification('Task updated successfully!', 'success');
+          } catch (error) {
+            console.error('Error updating todo:', error);
+            this.showNotification('Error updating task', 'error');
+          }
         },
 
         async deleteTodo(id) {
           if (!confirm('Are you sure you want to delete this task?')) return;
-          await fetch(`${this.apiUrl}${id}`, { method: 'DELETE' });
-          this.fetchTodos();
-          this.fetchStats();
+          
+          try {
+            await fetch(`${this.apiUrl}${id}`, { method: 'DELETE' });
+            this.fetchTodos();
+            this.fetchStats();
+            this.showNotification('Task deleted successfully!', 'success');
+          } catch (error) {
+            console.error('Error deleting todo:', error);
+            this.showNotification('Error deleting task', 'error');
+          }
+        },
+
+        async toggleArchive(todo) {
+          try {
+            await fetch(`${this.apiUrl}${todo.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ is_archived: !todo.is_archived })
+            });
+            this.fetchTodos();
+            this.fetchStats();
+            
+            const message = !todo.is_archived ? 'Task archived!' : 'Task unarchived';
+            this.showNotification(message, 'success');
+          } catch (error) {
+            console.error('Error archiving todo:', error);
+            this.showNotification('Error archiving task', 'error');
+          }
         },
 
         async bulkComplete() {
-          await fetch(`${this.apiUrl}bulk/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.selectedTodos)
-          });
-          this.selectedTodos = [];
-          this.fetchTodos();
-          this.fetchStats();
+          if (this.selectedTodos.length === 0) return;
+          
+          try {
+            await fetch(`${this.apiUrl}bulk/complete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ todo_ids: this.selectedTodos })
+            });
+            this.selectedTodos = [];
+            this.fetchTodos();
+            this.fetchStats();
+            this.showNotification('Tasks completed successfully!', 'success');
+          } catch (error) {
+            console.error('Error bulk completing todos:', error);
+            this.showNotification('Error completing tasks', 'error');
+          }
         },
 
         async bulkArchive() {
-          await fetch(`${this.apiUrl}bulk/archive`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.selectedTodos)
-          });
-          this.selectedTodos = [];
-          this.fetchTodos();
-          this.fetchStats();
+          if (this.selectedTodos.length === 0) return;
+          
+          try {
+            await fetch(`${this.apiUrl}bulk/archive`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ todo_ids: this.selectedTodos })
+            });
+            this.selectedTodos = [];
+            this.fetchTodos();
+            this.fetchStats();
+            this.showNotification('Tasks archived successfully!', 'success');
+          } catch (error) {
+            console.error('Error bulk archiving todos:', error);
+            this.showNotification('Error archiving tasks', 'error');
+          }
         },
 
         async bulkDelete() {
-          if (!confirm(`Delete ${this.selectedTodos.length} tasks?`)) return;
-          await fetch(`${this.apiUrl}bulk/delete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.selectedTodos)
-          });
-          this.selectedTodos = [];
-          this.fetchTodos();
-          this.fetchStats();
+          if (this.selectedTodos.length === 0) return;
+          if (!confirm(`Delete ${this.selectedTodos.length} tasks? This action cannot be undone.`)) return;
+          
+          try {
+            await fetch(`${this.apiUrl}bulk/delete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ todo_ids: this.selectedTodos })
+            });
+            this.selectedTodos = [];
+            this.fetchTodos();
+            this.fetchStats();
+            this.showNotification('Tasks deleted successfully!', 'success');
+          } catch (error) {
+            console.error('Error bulk deleting todos:', error);
+            this.showNotification('Error deleting tasks', 'error');
+          }
+        },
+
+        async clearCompleted() {
+          const completedTodos = this.todos.filter(todo => todo.status === 'completed').map(todo => todo.id);
+          if (completedTodos.length === 0) return;
+          
+          if (!confirm(`Clear ${completedTodos.length} completed tasks?`)) return;
+          
+          try {
+            await fetch(`${this.apiUrl}bulk/delete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ todo_ids: completedTodos })
+            });
+            this.fetchTodos();
+            this.fetchStats();
+            this.showNotification('Completed tasks cleared!', 'success');
+          } catch (error) {
+            console.error('Error clearing completed todos:', error);
+            this.showNotification('Error clearing tasks', 'error');
+          }
         },
 
         toggleSelection(id) {
@@ -400,24 +939,46 @@
           }
         },
 
-        getPriorityColor(priority) {
-          const colors = {
-            low: 'bg-green-50 border-green-200',
-            medium: 'bg-yellow-50 border-yellow-200',
-            high: 'bg-orange-50 border-orange-200',
-            urgent: 'bg-red-50 border-red-200'
-          };
-          return colors[priority] || 'bg-gray-50 border-gray-200';
+        addCategory(category) {
+          if (category && !this.categories.includes(category)) {
+            this.categories.push(category);
+            this.showNotification('Category added!', 'success');
+          }
         },
 
-        getPriorityLabel(priority) {
-          const labels = {
-            low: '🟢 Low',
-            medium: '🟡 Medium',
-            high: '🟠 High',
-            urgent: '🔴 Urgent'
-          };
-          return labels[priority] || priority;
+        getTodosByStatus(status) {
+          return this.todos.filter(todo => todo.status === status);
+        },
+
+        // Kanban functionality
+        dragTodo(event, todoId) {
+          event.dataTransfer.setData('text/plain', todoId);
+        },
+
+        allowDrop(event) {
+          event.preventDefault();
+        },
+
+        async dropTodo(event, newStatus) {
+          event.preventDefault();
+          const todoId = event.dataTransfer.getData('text/plain');
+          
+          try {
+            await fetch(`${this.apiUrl}${todoId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: newStatus })
+            });
+            this.fetchTodos();
+            this.fetchStats();
+          } catch (error) {
+            console.error('Error updating todo status:', error);
+          }
+        },
+
+        isOverdue(dueDate) {
+          if (!dueDate) return false;
+          return new Date(dueDate) < new Date();
         },
 
         formatDate(dateStr) {
@@ -433,14 +994,68 @@
           return `📅 ${date.toLocaleDateString()}`;
         },
 
+        formatDateTime(dateStr) {
+          if (!dateStr) return '';
+          const date = new Date(dateStr);
+          return date.toLocaleString();
+        },
+
+        shakeElement(elementId) {
+          const element = document.querySelector(`[x-model="${elementId}"]`);
+          if (element) {
+            element.classList.add('animate-shake');
+            setTimeout(() => {
+              element.classList.remove('animate-shake');
+            }, 500);
+          }
+        },
+
+        showNotification(message, type = 'info') {
+          // Create notification element
+          const notification = document.createElement('div');
+          notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white max-w-sm transform translate-x-full transition-transform duration-300 ${
+            type === 'success' ? 'bg-green-500' : 
+            type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+          }`;
+          
+          notification.innerHTML = `
+            <div class="flex items-center gap-2">
+              <i class="fas ${
+                type === 'success' ? 'fa-check-circle' : 
+                type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'
+              }"></i>
+              <span>${message}</span>
+            </div>
+          `;
+          
+          document.body.appendChild(notification);
+          
+          // Animate in
+          setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+          }, 100);
+          
+          // Remove after 3 seconds
+          setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+              document.body.removeChild(notification);
+            }, 300);
+          }, 3000);
+        },
+
         init() {
           this.fetchTodos();
           this.fetchStats();
           this.fetchCategories();
+          
+          // Set up periodic refresh
+          setInterval(() => {
+            this.fetchStats();
+          }, 30000); // Refresh stats every 30 seconds
         }
       }
     }
   </script>
-
 </body>
 </html>
