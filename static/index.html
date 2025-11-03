@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Todo App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4" x-data="todoApp()">
+
+  <div class="max-w-7xl mx-auto">
+    <!-- Header with Stats -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h1 class="text-3xl font-bold text-indigo-600">📋 Advanced Todo Manager</h1>
+        <button @click="showStats = !showStats" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg transition">
+          <span x-show="!showStats">Show Stats</span>
+          <span x-show="showStats">Hide Stats</span>
+        </button>
+      </div>
+      
+      <!-- Stats Panel -->
+      <div x-show="showStats" x-collapse class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+        <div class="bg-blue-50 p-4 rounded-lg">
+          <div class="text-2xl font-bold text-blue-600" x-text="stats.total"></div>
+          <div class="text-sm text-gray-600">Total Tasks</div>
+        </div>
+        <div class="bg-green-50 p-4 rounded-lg">
+          <div class="text-2xl font-bold text-green-600" x-text="stats.completed"></div>
+          <div class="text-sm text-gray-600">Completed</div>
+        </div>
+        <div class="bg-yellow-50 p-4 rounded-lg">
+          <div class="text-2xl font-bold text-yellow-600" x-text="stats.pending"></div>
+          <div class="text-sm text-gray-600">Pending</div>
+        </div>
+        <div class="bg-red-50 p-4 rounded-lg">
+          <div class="text-2xl font-bold text-red-600" x-text="stats.overdue"></div>
+          <div class="text-sm text-gray-600">Overdue</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left Panel - Add Task -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <h2 class="text-xl font-bold mb-4 text-gray-800">➕ Add New Task</h2>
+          
+          <div class="space-y-4">
+            <input x-model="newTodo.title" placeholder="Task title..." 
+                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            
+            <textarea x-model="newTodo.description" placeholder="Description (optional)..." 
+                      class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 h-24"></textarea>
+            
+            <select x-model="newTodo.priority" class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="low">🟢 Low Priority</option>
+              <option value="medium" selected>🟡 Medium Priority</option>
+              <option value="high">🟠 High Priority</option>
+              <option value="urgent">🔴 Urgent</option>
+            </select>
+            
+            <input x-model="newTodo.category" placeholder="Category (e.g., Work, Personal)..." 
+                   list="categories-list"
+                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <datalist id="categories-list">
+              <template x-for="cat in categories" :key="cat">
+                <option :value="cat"></option>
+              </template>
+            </datalist>
+            
+            <input type="datetime-local" x-model="newTodo.due_date" 
+                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            
+            <input x-model="newTodo.tags" placeholder="Tags (comma-separated)..." 
+                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            
+            <input type="number" x-model="newTodo.estimated_duration" placeholder="Duration (minutes)..." 
+                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            
+            <button @click="addTodo" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-3 font-semibold transition">
+              Add Task
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel - Todo List -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <!-- Filters and Search -->
+          <div class="mb-6 space-y-4">
+            <input x-model="filters.search" @input="fetchTodos" placeholder="🔍 Search tasks..." 
+                   class="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <select x-model="filters.completed" @change="fetchTodos" 
+                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <option value="">All Status</option>
+                <option value="false">Pending</option>
+                <option value="true">Completed</option>
+              </select>
+              
+              <select x-model="filters.priority" @change="fetchTodos" 
+                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <option value="">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+              
+              <select x-model="filters.category" @change="fetchTodos" 
+                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <option value="">All Categories</option>
+                <template x-for="cat in categories" :key="cat">
+                  <option :value="cat" x-text="cat"></option>
+                </template>
+              </select>
+              
+              <select x-model="filters.sort_by" @change="fetchTodos" 
+                      class="border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <option value="created_at">Sort by Date</option>
+                <option value="due_date">Sort by Due Date</option>
+                <option value="priority">Sort by Priority</option>
+                <option value="title">Sort by Title</option>
+              </select>
+            </div>
+
+            <!-- Bulk Actions -->
+            <div x-show="selectedTodos.length > 0" class="flex gap-2 flex-wrap">
+              <button @click="bulkComplete" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition">
+                ✓ Complete Selected (<span x-text="selectedTodos.length"></span>)
+              </button>
+              <button @click="bulkArchive" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition">
+                📦 Archive Selected
+              </button>
+              <button @click="bulkDelete" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition">
+                🗑️ Delete Selected
+              </button>
+              <button @click="selectedTodos = []" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition">
+                Clear Selection
+              </button>
+            </div>
+          </div>
+
+          <!-- Todo List -->
+          <div class="space-y-3 max-h-[600px] overflow-y-auto">
+            <template x-if="todos.length === 0">
+              <div class="text-center py-12 text-gray-500">
+                <div class="text-6xl mb-4">📝</div>
+                <p>No tasks found. Create one to get started!</p>
+              </div>
+            </template>
+
+            <template x-for="todo in todos" :key="todo.id">
+              <div class="border rounded-lg p-4 hover:shadow-md transition"
+                   :class="getPriorityColor(todo.priority)">
+                <div class="flex items-start gap-3">
+                  <input type="checkbox" 
+                         :checked="selectedTodos.includes(todo.id)"
+                         @change="toggleSelection(todo.id)"
+                         class="mt-1 w-4 h-4">
+                  
+                  <input type="checkbox" 
+                         :checked="todo.completed" 
+                         @change="toggleComplete(todo)" 
+                         class="mt-1 w-5 h-5">
+                  
+                  <div class="flex-1" @click="editingTodo = todo.id">
+                    <template x-if="editingTodo !== todo.id">
+                      <div>
+                        <h3 class="font-semibold text-lg" 
+                            :class="todo.completed ? 'line-through text-gray-500' : 'text-gray-800'"
+                            x-text="todo.title"></h3>
+                        
+                        <p x-show="todo.description" 
+                           class="text-sm text-gray-600 mt-1" 
+                           x-text="todo.description"></p>
+                        
+                        <div class="flex flex-wrap gap-2 mt-2 text-xs">
+                          <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded" 
+                                x-text="getPriorityLabel(todo.priority)"></span>
+                          <span x-show="todo.category" 
+                                class="px-2 py-1 bg-purple-100 text-purple-700 rounded" 
+                                x-text="todo.category"></span>
+                          <span x-show="todo.due_date" 
+                                class="px-2 py-1 bg-orange-100 text-orange-700 rounded" 
+                                x-text="formatDate(todo.due_date)"></span>
+                          <span x-show="todo.estimated_duration" 
+                                class="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                            ⏱️ <span x-text="todo.estimated_duration + ' min'"></span>
+                          </span>
+                        </div>
+                        
+                        <div x-show="todo.tags" class="flex flex-wrap gap-1 mt-2">
+                          <template x-for="tag in (todo.tags || '').split(',').filter(t => t.trim())" :key="tag">
+                            <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs" 
+                                  x-text="'#' + tag.trim()"></span>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+
+                    <template x-if="editingTodo === todo.id">
+                      <div class="space-y-2">
+                        <input x-model="todo.title" 
+                               class="w-full border rounded p-2 text-sm"
+                               @click.stop>
+                        <textarea x-model="todo.description" 
+                                  class="w-full border rounded p-2 text-sm h-20"
+                                  @click.stop></textarea>
+                        <button @click.stop="updateTodo(todo)" 
+                                class="bg-indigo-600 text-white px-3 py-1 rounded text-sm">
+                          Save
+                        </button>
+                        <button @click.stop="editingTodo = null; fetchTodos()" 
+                                class="bg-gray-500 text-white px-3 py-1 rounded text-sm ml-2">
+                          Cancel
+                        </button>
+                      </div>
+                    </template>
+                  </div>
+                  
+                  <button @click="deleteTodo(todo.id)" 
+                          class="text-red-500 hover:text-red-700 text-sm">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function todoApp() {
+      return {
+        todos: [],
+        categories: [],
+        tags: [],
+        stats: {
+          total: 0,
+          completed: 0,
+          pending: 0,
+          archived: 0,
+          overdue: 0,
+          due_today: 0,
+          by_priority: {},
+          by_category: {},
+          completion_rate: 0
+        },
+        newTodo: {
+          title: '',
+          description: '',
+          priority: 'medium',
+          category: '',
+          due_date: '',
+          tags: '',
+          estimated_duration: null
+        },
+        filters: {
+          search: '',
+          completed: '',
+          priority: '',
+          category: '',
+          sort_by: 'created_at',
+          sort_order: 'desc'
+        },
+        selectedTodos: [],
+        editingTodo: null,
+        showStats: false,
+        apiUrl: '/todos/',
+
+        async fetchTodos() {
+          const params = new URLSearchParams();
+          if (this.filters.search) params.append('search', this.filters.search);
+          if (this.filters.completed) params.append('completed', this.filters.completed);
+          if (this.filters.priority) params.append('priority', this.filters.priority);
+          if (this.filters.category) params.append('category', this.filters.category);
+          params.append('sort_by', this.filters.sort_by);
+          params.append('sort_order', this.filters.sort_order);
+
+          const res = await fetch(`${this.apiUrl}?${params}`);
+          this.todos = await res.json();
+        },
+
+        async fetchStats() {
+          const res = await fetch(`${this.apiUrl}stats`);
+          this.stats = await res.json();
+        },
+
+        async fetchCategories() {
+          const res = await fetch(`${this.apiUrl}categories`);
+          this.categories = await res.json();
+        },
+
+        async addTodo() {
+          if (!this.newTodo.title.trim()) return;
+          
+          const todoData = { ...this.newTodo };
+          if (!todoData.due_date) delete todoData.due_date;
+          if (!todoData.estimated_duration) delete todoData.estimated_duration;
+
+          await fetch(this.apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(todoData)
+          });
+
+          this.newTodo = {
+            title: '',
+            description: '',
+            priority: 'medium',
+            category: '',
+            due_date: '',
+            tags: '',
+            estimated_duration: null
+          };
+          
+          this.fetchTodos();
+          this.fetchStats();
+          this.fetchCategories();
+        },
+
+        async toggleComplete(todo) {
+          await fetch(`${this.apiUrl}${todo.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: !todo.completed })
+          });
+          this.fetchTodos();
+          this.fetchStats();
+        },
+
+        async updateTodo(todo) {
+          await fetch(`${this.apiUrl}${todo.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: todo.title,
+              description: todo.description
+            })
+          });
+          this.editingTodo = null;
+          this.fetchTodos();
+        },
+
+        async deleteTodo(id) {
+          if (!confirm('Are you sure you want to delete this task?')) return;
+          await fetch(`${this.apiUrl}${id}`, { method: 'DELETE' });
+          this.fetchTodos();
+          this.fetchStats();
+        },
+
+        async bulkComplete() {
+          await fetch(`${this.apiUrl}bulk/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.selectedTodos)
+          });
+          this.selectedTodos = [];
+          this.fetchTodos();
+          this.fetchStats();
+        },
+
+        async bulkArchive() {
+          await fetch(`${this.apiUrl}bulk/archive`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.selectedTodos)
+          });
+          this.selectedTodos = [];
+          this.fetchTodos();
+          this.fetchStats();
+        },
+
+        async bulkDelete() {
+          if (!confirm(`Delete ${this.selectedTodos.length} tasks?`)) return;
+          await fetch(`${this.apiUrl}bulk/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.selectedTodos)
+          });
+          this.selectedTodos = [];
+          this.fetchTodos();
+          this.fetchStats();
+        },
+
+        toggleSelection(id) {
+          const idx = this.selectedTodos.indexOf(id);
+          if (idx > -1) {
+            this.selectedTodos.splice(idx, 1);
+          } else {
+            this.selectedTodos.push(id);
+          }
+        },
+
+        getPriorityColor(priority) {
+          const colors = {
+            low: 'bg-green-50 border-green-200',
+            medium: 'bg-yellow-50 border-yellow-200',
+            high: 'bg-orange-50 border-orange-200',
+            urgent: 'bg-red-50 border-red-200'
+          };
+          return colors[priority] || 'bg-gray-50 border-gray-200';
+        },
+
+        getPriorityLabel(priority) {
+          const labels = {
+            low: '🟢 Low',
+            medium: '🟡 Medium',
+            high: '🟠 High',
+            urgent: '🔴 Urgent'
+          };
+          return labels[priority] || priority;
+        },
+
+        formatDate(dateStr) {
+          if (!dateStr) return '';
+          const date = new Date(dateStr);
+          const now = new Date();
+          const diff = date - now;
+          const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+          
+          if (days < 0) return '⚠️ Overdue';
+          if (days === 0) return '📅 Today';
+          if (days === 1) return '📅 Tomorrow';
+          return `📅 ${date.toLocaleDateString()}`;
+        },
+
+        init() {
+          this.fetchTodos();
+          this.fetchStats();
+          this.fetchCategories();
+        }
+      }
+    }
+  </script>
+
+</body>
+</html>
