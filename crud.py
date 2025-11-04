@@ -25,23 +25,29 @@ def get_todos(db: Session, skip: int = 0, limit: int = 100,
         query = query.filter(models.Todo.status == status_filter)
     
     if priority:
-        query = query.filter(models.Todo.priority == priority)
+        # Convert string to enum
+        priority_enum = getattr(models.PriorityLevel, priority.upper(), None)
+        if priority_enum:
+            query = query.filter(models.Todo.priority == priority_enum)
     
     if category:
         query = query.filter(models.Todo.category.has(name=category))
     
     if status:
-        query = query.filter(models.Todo.status == status)
+        # Convert string to enum
+        status_enum = getattr(models.StatusLevel, status.upper(), None)
+        if status_enum:
+            query = query.filter(models.Todo.status == status_enum)
     
     # Sorting
     if sort_by == "due_date":
         order_field = models.Todo.due_date
     elif sort_by == "priority":
         priority_order = case(
-            (models.Todo.priority == "urgent", 1),
-            (models.Todo.priority == "high", 2),
-            (models.Todo.priority == "medium", 3),
-            (models.Todo.priority == "low", 4),
+            (models.Todo.priority == models.PriorityLevel.URGENT, 1),
+            (models.Todo.priority == models.PriorityLevel.HIGH, 2),
+            (models.Todo.priority == models.PriorityLevel.MEDIUM, 3),
+            (models.Todo.priority == models.PriorityLevel.LOW, 4),
             else_=5
         )
         order_field = priority_order
@@ -55,13 +61,36 @@ def get_todos(db: Session, skip: int = 0, limit: int = 100,
     else:
         query = query.order_by(order_field.desc())
     
-    return query.offset(skip).limit(limit).all()
+    todos = query.offset(skip).limit(limit).all()
+    
+    # Ensure relationships are loaded
+    for todo in todos:
+        if todo.category:
+            db.refresh(todo, ['category'])
+        if todo.tags:
+            db.refresh(todo, ['tags'])
+    
+    return todos
 
 def get_todo(db: Session, todo_id: int):
     return db.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
 def create_todo(db: Session, todo: schemas.TodoCreate):
-    db_todo = models.Todo(**todo.dict(exclude={'tag_ids'}))
+    # Convert string values to enum instances
+    todo_data = todo.dict(exclude={'tag_ids'})
+    
+    # Handle enum conversion
+    if 'status' in todo_data and isinstance(todo_data['status'], str):
+        todo_data['status'] = getattr(models.StatusLevel, todo_data['status'].upper())
+    
+    if 'priority' in todo_data and isinstance(todo_data['priority'], str):
+        todo_data['priority'] = getattr(models.PriorityLevel, todo_data['priority'].upper())
+    
+    # Remove category_id if it's empty
+    if 'category_id' in todo_data and todo_data['category_id'] is None:
+        del todo_data['category_id']
+    
+    db_todo = models.Todo(**todo_data)
     
     if todo.tag_ids:
         tags = db.query(models.Tag).filter(models.Tag.id.in_(todo.tag_ids)).all()
@@ -70,6 +99,15 @@ def create_todo(db: Session, todo: schemas.TodoCreate):
     db.add(db_todo)
     db.commit()
     db.refresh(db_todo)
+    
+    # Ensure relationships are loaded
+    if db_todo.category_id:
+        db.refresh(db_todo, ['category'])
+    if db_todo.tags:
+        db.refresh(db_todo, ['tags'])
+
+    db.refresh(db_todo, ['subtasks'])
+    
     return db_todo
 
 def update_todo(db: Session, todo_id: int, todo: schemas.TodoUpdate):
@@ -78,6 +116,13 @@ def update_todo(db: Session, todo_id: int, todo: schemas.TodoUpdate):
         return None
     
     update_data = todo.dict(exclude_unset=True, exclude={'tag_ids'})
+    
+    # Handle enum conversion
+    if 'status' in update_data and isinstance(update_data['status'], str):
+        update_data['status'] = getattr(models.StatusLevel, update_data['status'].upper())
+    
+    if 'priority' in update_data and isinstance(update_data['priority'], str):
+        update_data['priority'] = getattr(models.PriorityLevel, update_data['priority'].upper())
     
     for key, value in update_data.items():
         setattr(db_todo, key, value)
@@ -90,11 +135,20 @@ def update_todo(db: Session, todo_id: int, todo: schemas.TodoUpdate):
             db_todo.tags = tags
     
     # Update completed_at if status changed to completed
-    if todo.status == schemas.StatusLevel.COMPLETED and db_todo.status != schemas.StatusLevel.COMPLETED:
-        db_todo.completed_at = datetime.utcnow()
+    if (todo.status == schemas.StatusLevel.COMPLETED or 
+        (isinstance(todo.status, str) and todo.status.upper() == 'COMPLETED')):
+        if db_todo.status != models.StatusLevel.COMPLETED:
+            db_todo.completed_at = datetime.utcnow()
     
     db.commit()
     db.refresh(db_todo)
+    
+    # Ensure relationships are loaded
+    if db_todo.category_id:
+        db.refresh(db_todo, ['category'])
+    if db_todo.tags:
+        db.refresh(db_todo, ['tags'])
+    
     return db_todo
 
 def delete_todo(db: Session, todo_id: int):
@@ -105,6 +159,13 @@ def delete_todo(db: Session, todo_id: int):
     return db_todo
 
 def bulk_update_todos(db: Session, todo_ids: List[int], update_data: dict):
+    # Handle enum conversion in bulk updates
+    if 'status' in update_data and isinstance(update_data['status'], str):
+        update_data['status'] = getattr(models.StatusLevel, update_data['status'].upper())
+    
+    if 'priority' in update_data and isinstance(update_data['priority'], str):
+        update_data['priority'] = getattr(models.PriorityLevel, update_data['priority'].upper())
+    
     db.query(models.Todo).filter(models.Todo.id.in_(todo_ids)).update(update_data, synchronize_session=False)
     db.commit()
     return len(todo_ids)

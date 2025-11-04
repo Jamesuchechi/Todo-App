@@ -642,420 +642,423 @@
 
   <script>
     function todoApp() {
-      return {
-        todos: [],
-        categories: ['Work', 'Personal', 'Shopping', 'Health'],
-        tags: [],
-        stats: {
-          total: 0,
-          completed: 0,
-          pending: 0,
-          in_progress: 0,
-          overdue: 0,
-          due_today: 0,
-          by_priority: {},
-          by_category: {},
-          by_status: {},
-          completion_rate: 0,
-          average_completion_time: null
-        },
-        newTodo: {
-          title: '',
-          description: '',
-          priority: 'medium',
-          status: 'pending',
-          category: '',
-          due_date: '',
-          tags: '',
-          estimated_duration: null
-        },
-        quickTask: '',
-        filters: {
-          search: '',
-          status: '',
-          priority: '',
-          category: '',
-          sort_by: 'created_at',
-          sort_order: 'desc'
-        },
-        selectedTodos: [],
-        editingTodo: null,
-        showStats: true,
-        showQuickAdd: false,
-        focusMode: false,
-        view: 'list',
-        apiUrl: '/todos/',
-        debounceTimer: null,
+        return {
+            todos: [],
+            categories: ['Work', 'Personal', 'Shopping', 'Health'],
+            tags: [],
+            stats: {
+                total: 0,
+                completed: 0,
+                pending: 0,
+                in_progress: 0,
+                overdue: 0,
+                due_today: 0,
+                by_priority: {},
+                by_category: {},
+                by_status: {},
+                completion_rate: 0,
+                average_completion_time: null
+            },
+            newTodo: {
+                title: '',
+                description: '',
+                priority: 'medium',
+                status: 'pending',
+                category: '',
+                due_date: '',
+                tags: '',
+                estimated_duration: null
+            },
+            quickTask: '',
+            filters: {
+                search: '',
+                status: '',
+                priority: '',
+                category: '',
+                sort_by: 'created_at',
+                sort_order: 'desc'
+            },
+            selectedTodos: [],
+            editingTodo: null,
+            showStats: true,
+            showQuickAdd: false,
+            focusMode: false,
+            view: 'list',
+            apiUrl: '/todos/',
+            debounceTimer: null,
 
-        async fetchTodos() {
-          try {
-            const params = new URLSearchParams();
-            if (this.filters.search) params.append('search', this.filters.search);
-            if (this.filters.status) params.append('status', this.filters.status);
-            if (this.filters.priority) params.append('priority', this.filters.priority);
-            if (this.filters.category) params.append('category', this.filters.category);
-            params.append('sort_by', this.filters.sort_by);
-            params.append('sort_order', this.filters.sort_order);
+            async fetchTodos() {
+                try {
+                    const params = new URLSearchParams();
+                    if (this.filters.search) params.append('search', this.filters.search);
+                    if (this.filters.status) params.append('status', this.filters.status);
+                    if (this.filters.priority) params.append('priority', this.filters.priority);
+                    if (this.filters.category) params.append('category', this.filters.category);
+                    params.append('sort_by', this.filters.sort_by);
+                    params.append('sort_order', this.filters.sort_order);
 
-            const res = await fetch(`${this.apiUrl}?${params}`);
-            this.todos = await res.json();
-          } catch (error) {
-            console.error('Error fetching todos:', error);
-          }
-        },
+                    const res = await fetch(`${this.apiUrl}?${params}`);
+                    if (res.ok) {
+                        this.todos = await res.json();
+                    } else {
+                        console.error('Failed to fetch todos:', res.status);
+                    }
+                } catch (error) {
+                    console.error('Error fetching todos:', error);
+                    this.showNotification('Error loading tasks', 'error');
+                }
+            },
 
-        debouncedFetchTodos() {
-          clearTimeout(this.debounceTimer);
-          this.debounceTimer = setTimeout(() => {
-            this.fetchTodos();
-          }, 300);
-        },
+            debouncedFetchTodos() {
+                clearTimeout(this.debounceTimer);
+                this.debounceTimer = setTimeout(() => {
+                    this.fetchTodos();
+                }, 300);
+            },
 
-        async fetchStats() {
-          try {
-            const res = await fetch(`${this.apiUrl}stats/`);
-            this.stats = await res.json();
-          } catch (error) {
-            console.error('Error fetching stats:', error);
-          }
-        },
+            async fetchStats() {
+                try {
+                    const res = await fetch(`${this.apiUrl}stats/`);
+                    if (res.ok) {
+                        this.stats = await res.json();
+                    }
+                } catch (error) {
+                    console.error('Error fetching stats:', error);
+                }
+            },
 
-        async fetchCategories() {
-          try {
-            const res = await fetch(`${this.apiUrl}categories/`);
-            this.categories = await res.json();
-          } catch (error) {
-            console.error('Error fetching categories:', error);
-          }
-        },
+            async fetchCategories() {
+                try {
+                    const res = await fetch(`${this.apiUrl}categories/`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.categories = data.map(cat => cat.name);
+                    }
+                } catch (error) {
+                    console.error('Error fetching categories:', error);
+                }
+            },
 
-        async addTodo() {
-          if (!this.newTodo.title.trim()) {
-            this.shakeElement('newTodo.title');
-            return;
-          }
-          
-          try {
-            const todoData = { ...this.newTodo };
-            if (!todoData.due_date) delete todoData.due_date;
-            if (!todoData.estimated_duration) delete todoData.estimated_duration;
+            async addTodo() {
+                if (!this.newTodo.title.trim()) {
+                    this.shakeElement('newTodo.title');
+                    return;
+                }
+                
+                try {
+                    const todoData = { 
+                        ...this.newTodo,
+                        status: this.newTodo.status || 'pending',
+                        priority: this.newTodo.priority || 'medium'
+                    };
+                    
+                    // Clean up data
+                    if (!todoData.due_date) delete todoData.due_date;
+                    if (!todoData.estimated_duration) delete todoData.estimated_duration;
+                    if (!todoData.category) delete todoData.category;
 
-            await fetch(this.apiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(todoData)
-            });
+                    const response = await fetch(this.apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(todoData)
+                    });
 
-            this.newTodo = {
-              title: '',
-              description: '',
-              priority: 'medium',
-              status: 'pending',
-              category: '',
-              due_date: '',
-              tags: '',
-              estimated_duration: null
-            };
-            
-            this.fetchTodos();
-            this.fetchStats();
-            this.fetchCategories();
-            
-            // Show success animation
-            this.showNotification('Task added successfully!', 'success');
-          } catch (error) {
-            console.error('Error adding todo:', error);
-            this.showNotification('Error adding task', 'error');
-          }
-        },
+                    if (response.ok) {
+                        this.newTodo = {
+                            title: '',
+                            description: '',
+                            priority: 'medium',
+                            status: 'pending',
+                            category: '',
+                            due_date: '',
+                            tags: '',
+                            estimated_duration: null
+                        };
+                        
+                        await this.fetchTodos();
+                        await this.fetchStats();
+                        this.showNotification('Task added successfully!', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        this.showNotification(`Error: ${errorData.detail || 'Failed to add task'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error adding todo:', error);
+                    this.showNotification('Error adding task', 'error');
+                }
+            },
 
-        async addQuickTask() {
-          if (!this.quickTask.trim()) return;
-          
-          this.newTodo.title = this.quickTask;
-          await this.addTodo();
-          this.quickTask = '';
-          this.showQuickAdd = false;
-        },
+            async addQuickTask() {
+                if (!this.quickTask.trim()) return;
+                
+                this.newTodo.title = this.quickTask;
+                await this.addTodo();
+                this.quickTask = '';
+                this.showQuickAdd = false;
+            },
 
-        async toggleStatus(todo) {
-          const newStatus = todo.status === 'completed' ? 'pending' : 'completed';
-          
-          try {
-            await fetch(`${this.apiUrl}${todo.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: newStatus })
-            });
-            this.fetchTodos();
-            this.fetchStats();
-            
-            const message = newStatus === 'completed' ? 'Task completed!' : 'Task marked as pending';
-            this.showNotification(message, 'success');
-          } catch (error) {
-            console.error('Error updating todo:', error);
-            this.showNotification('Error updating task', 'error');
-          }
-        },
+            async toggleStatus(todo) {
+                const newStatus = todo.status === 'completed' ? 'pending' : 'completed';
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}${todo.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus })
+                    });
 
-        async updateTodo(todo) {
-          try {
-            await fetch(`${this.apiUrl}${todo.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                title: todo.title,
-                description: todo.description,
-                status: todo.status,
-                priority: todo.priority
-              })
-            });
-            this.editingTodo = null;
-            this.fetchTodos();
-            this.showNotification('Task updated successfully!', 'success');
-          } catch (error) {
-            console.error('Error updating todo:', error);
-            this.showNotification('Error updating task', 'error');
-          }
-        },
+                    if (response.ok) {
+                        await this.fetchTodos();
+                        await this.fetchStats();
+                        
+                        const message = newStatus === 'completed' ? 'Task completed!' : 'Task marked as pending';
+                        this.showNotification(message, 'success');
+                    }
+                } catch (error) {
+                    console.error('Error updating todo:', error);
+                    this.showNotification('Error updating task', 'error');
+                }
+            },
 
-        async deleteTodo(id) {
-          if (!confirm('Are you sure you want to delete this task?')) return;
-          
-          try {
-            await fetch(`${this.apiUrl}${id}`, { method: 'DELETE' });
-            this.fetchTodos();
-            this.fetchStats();
-            this.showNotification('Task deleted successfully!', 'success');
-          } catch (error) {
-            console.error('Error deleting todo:', error);
-            this.showNotification('Error deleting task', 'error');
-          }
-        },
+            async updateTodo(todo) {
+                try {
+                    const response = await fetch(`${this.apiUrl}${todo.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: todo.title,
+                            description: todo.description,
+                            status: todo.status,
+                            priority: todo.priority
+                        })
+                    });
 
-        async toggleArchive(todo) {
-          try {
-            await fetch(`${this.apiUrl}${todo.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ is_archived: !todo.is_archived })
-            });
-            this.fetchTodos();
-            this.fetchStats();
-            
-            const message = !todo.is_archived ? 'Task archived!' : 'Task unarchived';
-            this.showNotification(message, 'success');
-          } catch (error) {
-            console.error('Error archiving todo:', error);
-            this.showNotification('Error archiving task', 'error');
-          }
-        },
+                    if (response.ok) {
+                        this.editingTodo = null;
+                        await this.fetchTodos();
+                        this.showNotification('Task updated successfully!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Error updating todo:', error);
+                    this.showNotification('Error updating task', 'error');
+                }
+            },
 
-        async bulkComplete() {
-          if (this.selectedTodos.length === 0) return;
-          
-          try {
-            await fetch(`${this.apiUrl}bulk/complete`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ todo_ids: this.selectedTodos })
-            });
-            this.selectedTodos = [];
-            this.fetchTodos();
-            this.fetchStats();
-            this.showNotification('Tasks completed successfully!', 'success');
-          } catch (error) {
-            console.error('Error bulk completing todos:', error);
-            this.showNotification('Error completing tasks', 'error');
-          }
-        },
+            async deleteTodo(id) {
+                if (!confirm('Are you sure you want to delete this task?')) return;
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}${id}`, { method: 'DELETE' });
+                    
+                    if (response.ok) {
+                        await this.fetchTodos();
+                        await this.fetchStats();
+                        this.showNotification('Task deleted successfully!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Error deleting todo:', error);
+                    this.showNotification('Error deleting task', 'error');
+                }
+            },
 
-        async bulkArchive() {
-          if (this.selectedTodos.length === 0) return;
-          
-          try {
-            await fetch(`${this.apiUrl}bulk/archive`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ todo_ids: this.selectedTodos })
-            });
-            this.selectedTodos = [];
-            this.fetchTodos();
-            this.fetchStats();
-            this.showNotification('Tasks archived successfully!', 'success');
-          } catch (error) {
-            console.error('Error bulk archiving todos:', error);
-            this.showNotification('Error archiving tasks', 'error');
-          }
-        },
+            async bulkComplete() {
+                if (this.selectedTodos.length === 0) return;
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}bulk/complete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ todo_ids: this.selectedTodos })
+                    });
 
-        async bulkDelete() {
-          if (this.selectedTodos.length === 0) return;
-          if (!confirm(`Delete ${this.selectedTodos.length} tasks? This action cannot be undone.`)) return;
-          
-          try {
-            await fetch(`${this.apiUrl}bulk/delete`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ todo_ids: this.selectedTodos })
-            });
-            this.selectedTodos = [];
-            this.fetchTodos();
-            this.fetchStats();
-            this.showNotification('Tasks deleted successfully!', 'success');
-          } catch (error) {
-            console.error('Error bulk deleting todos:', error);
-            this.showNotification('Error deleting tasks', 'error');
-          }
-        },
+                    if (response.ok) {
+                        this.selectedTodos = [];
+                        await this.fetchTodos();
+                        await this.fetchStats();
+                        this.showNotification('Tasks completed successfully!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Error bulk completing todos:', error);
+                    this.showNotification('Error completing tasks', 'error');
+                }
+            },
 
-        async clearCompleted() {
-          const completedTodos = this.todos.filter(todo => todo.status === 'completed').map(todo => todo.id);
-          if (completedTodos.length === 0) return;
-          
-          if (!confirm(`Clear ${completedTodos.length} completed tasks?`)) return;
-          
-          try {
-            await fetch(`${this.apiUrl}bulk/delete`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ todo_ids: completedTodos })
-            });
-            this.fetchTodos();
-            this.fetchStats();
-            this.showNotification('Completed tasks cleared!', 'success');
-          } catch (error) {
-            console.error('Error clearing completed todos:', error);
-            this.showNotification('Error clearing tasks', 'error');
-          }
-        },
+            async bulkArchive() {
+                if (this.selectedTodos.length === 0) return;
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}bulk/archive`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ todo_ids: this.selectedTodos })
+                    });
 
-        toggleSelection(id) {
-          const idx = this.selectedTodos.indexOf(id);
-          if (idx > -1) {
-            this.selectedTodos.splice(idx, 1);
-          } else {
-            this.selectedTodos.push(id);
-          }
-        },
+                    if (response.ok) {
+                        this.selectedTodos = [];
+                        await this.fetchTodos();
+                        await this.fetchStats();
+                        this.showNotification('Tasks archived successfully!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Error bulk archiving todos:', error);
+                    this.showNotification('Error archiving tasks', 'error');
+                }
+            },
 
-        addCategory(category) {
-          if (category && !this.categories.includes(category)) {
-            this.categories.push(category);
-            this.showNotification('Category added!', 'success');
-          }
-        },
+            async bulkDelete() {
+                if (this.selectedTodos.length === 0) return;
+                if (!confirm(`Delete ${this.selectedTodos.length} tasks? This action cannot be undone.`)) return;
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}bulk/delete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ todo_ids: this.selectedTodos })
+                    });
 
-        getTodosByStatus(status) {
-          return this.todos.filter(todo => todo.status === status);
-        },
+                    if (response.ok) {
+                        this.selectedTodos = [];
+                        await this.fetchTodos();
+                        await this.fetchStats();
+                        this.showNotification('Tasks deleted successfully!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Error bulk deleting todos:', error);
+                    this.showNotification('Error deleting tasks', 'error');
+                }
+            },
 
-        // Kanban functionality
-        dragTodo(event, todoId) {
-          event.dataTransfer.setData('text/plain', todoId);
-        },
+            toggleSelection(id) {
+                const idx = this.selectedTodos.indexOf(id);
+                if (idx > -1) {
+                    this.selectedTodos.splice(idx, 1);
+                } else {
+                    this.selectedTodos.push(id);
+                }
+            },
 
-        allowDrop(event) {
-          event.preventDefault();
-        },
+            addCategory(category) {
+                if (category && !this.categories.includes(category)) {
+                    this.categories.push(category);
+                    this.showNotification('Category added!', 'success');
+                }
+            },
 
-        async dropTodo(event, newStatus) {
-          event.preventDefault();
-          const todoId = event.dataTransfer.getData('text/plain');
-          
-          try {
-            await fetch(`${this.apiUrl}${todoId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: newStatus })
-            });
-            this.fetchTodos();
-            this.fetchStats();
-          } catch (error) {
-            console.error('Error updating todo status:', error);
-          }
-        },
+            getTodosByStatus(status) {
+                return this.todos.filter(todo => todo.status === status);
+            },
 
-        isOverdue(dueDate) {
-          if (!dueDate) return false;
-          return new Date(dueDate) < new Date();
-        },
+            // Kanban functionality
+            dragTodo(event, todoId) {
+                event.dataTransfer.setData('text/plain', todoId);
+            },
 
-        formatDate(dateStr) {
-          if (!dateStr) return '';
-          const date = new Date(dateStr);
-          const now = new Date();
-          const diff = date - now;
-          const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-          
-          if (days < 0) return '⚠️ Overdue';
-          if (days === 0) return '📅 Today';
-          if (days === 1) return '📅 Tomorrow';
-          return `📅 ${date.toLocaleDateString()}`;
-        },
+            allowDrop(event) {
+                event.preventDefault();
+            },
 
-        formatDateTime(dateStr) {
-          if (!dateStr) return '';
-          const date = new Date(dateStr);
-          return date.toLocaleString();
-        },
+            async dropTodo(event, newStatus) {
+                event.preventDefault();
+                const todoId = event.dataTransfer.getData('text/plain');
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}${todoId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus })
+                    });
 
-        shakeElement(elementId) {
-          const element = document.querySelector(`[x-model="${elementId}"]`);
-          if (element) {
-            element.classList.add('animate-shake');
-            setTimeout(() => {
-              element.classList.remove('animate-shake');
-            }, 500);
-          }
-        },
+                    if (response.ok) {
+                        await this.fetchTodos();
+                        await this.fetchStats();
+                    }
+                } catch (error) {
+                    console.error('Error updating todo status:', error);
+                }
+            },
 
-        showNotification(message, type = 'info') {
-          // Create notification element
-          const notification = document.createElement('div');
-          notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white max-w-sm transform translate-x-full transition-transform duration-300 ${
-            type === 'success' ? 'bg-green-500' : 
-            type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-          }`;
-          
-          notification.innerHTML = `
-            <div class="flex items-center gap-2">
-              <i class="fas ${
-                type === 'success' ? 'fa-check-circle' : 
-                type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'
-              }"></i>
-              <span>${message}</span>
-            </div>
-          `;
-          
-          document.body.appendChild(notification);
-          
-          // Animate in
-          setTimeout(() => {
-            notification.style.transform = 'translateX(0)';
-          }, 100);
-          
-          // Remove after 3 seconds
-          setTimeout(() => {
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-              document.body.removeChild(notification);
-            }, 300);
-          }, 3000);
-        },
+            isOverdue(dueDate) {
+                if (!dueDate) return false;
+                return new Date(dueDate) < new Date();
+            },
 
-        init() {
-          this.fetchTodos();
-          this.fetchStats();
-          this.fetchCategories();
-          
-          // Set up periodic refresh
-          setInterval(() => {
-            this.fetchStats();
-          }, 30000); // Refresh stats every 30 seconds
+            formatDate(dateStr) {
+                if (!dateStr) return '';
+                const date = new Date(dateStr);
+                const now = new Date();
+                const diff = date - now;
+                const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                
+                if (days < 0) return '⚠️ Overdue';
+                if (days === 0) return '📅 Today';
+                if (days === 1) return '📅 Tomorrow';
+                return `📅 ${date.toLocaleDateString()}`;
+            },
+
+            formatDateTime(dateStr) {
+                if (!dateStr) return '';
+                const date = new Date(dateStr);
+                return date.toLocaleString();
+            },
+
+            shakeElement(elementId) {
+                const element = document.querySelector(`[x-model="${elementId}"]`);
+                if (element) {
+                    element.classList.add('animate-shake');
+                    setTimeout(() => {
+                        element.classList.remove('animate-shake');
+                    }, 500);
+                }
+            },
+
+            showNotification(message, type = 'info') {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white max-w-sm transform translate-x-full transition-transform duration-300 ${
+                    type === 'success' ? 'bg-green-500' : 
+                    type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+                }`;
+                
+                notification.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas ${
+                            type === 'success' ? 'fa-check-circle' : 
+                            type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'
+                        }"></i>
+                        <span>${message}</span>
+                    </div>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Animate in
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(0)';
+                }, 100);
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        if (document.body.contains(notification)) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 300);
+                }, 3000);
+            },
+
+            async init() {
+                await this.fetchTodos();
+                await this.fetchStats();
+                await this.fetchCategories();
+                
+                // Set up periodic refresh
+                setInterval(() => {
+                    this.fetchStats();
+                }, 30000);
+            }
         }
-      }
     }
-  </script>
+</script>
 </body>
 </html>

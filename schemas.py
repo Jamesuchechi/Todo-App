@@ -26,7 +26,7 @@ class TagResponse(TagBase):
     id: int
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CategoryBase(BaseModel):
     name: str
@@ -39,7 +39,7 @@ class CategoryResponse(CategoryBase):
     id: int
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class TodoBase(BaseModel):
     title: str
@@ -79,8 +79,12 @@ class TodoResponse(TodoBase):
     tags: List[TagResponse] = []
     subtasks: List['TodoResponse'] = []
     
+    @validator('subtasks', pre=True, always=True)
+    def ensure_subtasks_list(cls, v):
+        return v if v is not None else []
+    
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class StatsResponse(BaseModel):
     total: int
@@ -97,3 +101,6 @@ class StatsResponse(BaseModel):
 
 class BulkOperation(BaseModel):
     todo_ids: List[int]
+
+
+TodoResponse.model_rebuild()
