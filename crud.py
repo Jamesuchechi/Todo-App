@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func, case, desc
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
@@ -65,23 +65,30 @@ def get_todos(db: Session, skip: int = 0, limit: int = 100,
         query = query.order_by(order_field.asc())
     else:
         query = query.order_by(order_field.desc())
+
+        # Eager load relationships to avoid N+1 queries
+    query = query.options(
+        joinedload(models.Todo.category),
+        joinedload(models.Todo.tags),
+        joinedload(models.Todo.subtasks).joinedload(models.Todo.category),
+        joinedload(models.Todo.dependencies),
+        joinedload(models.Todo.assignees),
+        joinedload(models.Todo.comments)
+    )
     
     todos = query.offset(skip).limit(limit).all()
-    
-    # Ensure relationships are loaded
-    for todo in todos:
-        if todo.category:
-            db.refresh(todo, ['category'])
-        if todo.tags:
-            db.refresh(todo, ['tags'])
-        db.refresh(todo, ['subtasks', 'dependencies', 'assignees', 'comments'])
-    
+
     return todos
 
 def get_todo(db: Session, todo_id: int):
-    todo = db.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    if todo:
-        db.refresh(todo, ['category', 'tags', 'subtasks', 'dependencies', 'assignees', 'comments'])
+    todo = db.query(models.Todo).options(
+        joinedload(models.Todo.category),
+        joinedload(models.Todo.tags),
+        joinedload(models.Todo.subtasks).joinedload(models.Todo.category),
+        joinedload(models.Todo.dependencies),
+        joinedload(models.Todo.assignees),
+        joinedload(models.Todo.comments)
+    ).filter(models.Todo.id == todo_id).first()
     return todo
 
 def create_todo(db: Session, todo: schemas.TodoCreate, user_id: Optional[int] = None):
@@ -123,14 +130,19 @@ def create_todo(db: Session, todo: schemas.TodoCreate, user_id: Optional[int] = 
     db.add(db_todo)
     db.commit()
     db.refresh(db_todo)
+
+        
+    # Store the ID before expunging
+    todo_id = db_todo.id
+    
+    # Expunge from session to clear any lazy-loaded proxies
+    db.expunge(db_todo)
     
     # Ensure all relationships are loaded
-    if db_todo.category_id:
-        db.refresh(db_todo, ['category'])
-    db.refresh(db_todo, ['tags', 'subtasks', 'dependencies', 'assignees', 'comments'])
-    
+    db_todo = get_todo(db, todo_id)
+
     # Log activity
-    log_activity(db, db_todo.id, user_id, "created", {"title": db_todo.title})
+    log_activity(db, todo_id, user_id, "created", {"title": db_todo.title})
     
     return db_todo
 

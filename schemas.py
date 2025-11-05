@@ -2,6 +2,7 @@ from pydantic import BaseModel, validator, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+import json
 
 class PriorityLevel(str, Enum):
     LOW = "low"
@@ -165,13 +166,66 @@ class TodoResponse(TodoBase):
     pomodoro_target: Optional[int] = None
     created_by: Optional[int] = None
     
-    @validator('subtasks', 'dependencies', 'assignees', 'comments', pre=True, always=True)
-    def ensure_list(cls, v):
-        return v if v is not None else []
+   
+    @validator('subtasks', 'dependencies', pre=True, always=True)
+    def convert_to_list(cls, v):
+        """Convert SQLAlchemy relationships to lists, handling all edge cases"""
+        if v is None:
+            return []
     
+        # If it's already a list, return it
+        if isinstance(v, list):
+            return v
+    
+        # If it's a dict (shouldn't happen but just in case), return empty list
+        if isinstance(v, dict):
+            return []
+    
+        # Handle SQLAlchemy InstrumentedList or any iterable
+        try:
+            # Try to convert to list - this handles InstrumentedList, Query results, etc.
+            return list(v)
+        except (TypeError, AttributeError):
+            # If conversion fails, return empty list
+            return []
+
+    @validator('tags', 'assignees', 'comments', pre=True, always=True)
+    def ensure_lists(cls, v):
+        """Ensure relationship fields are always lists"""
+        if v is None:
+            return []
+    
+        if isinstance(v, list):
+            return v
+    
+        if isinstance(v, dict):
+            return []
+    
+        try:
+            return list(v)
+        except (TypeError, AttributeError):
+            return []
+
     @validator('time_entries', 'attachments', pre=True, always=True)
-    def ensure_json_list(cls, v):
-        return v if v is not None else []
+    def ensure_json_lists(cls, v):
+        """Ensure JSON fields are always lists"""
+        if v is None:
+            return []
+    
+        if isinstance(v, list):
+            return v
+    
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+    
+        try:
+            return list(v)
+        except (TypeError, AttributeError):
+            return []
     
     class Config:
         from_attributes = True
